@@ -7,8 +7,22 @@ import { Client } from './client';
 
 const MAX_RETRIES = 1;
 
+/**
+ * Marker key on the axios request config that tracks how many 401
+ * retries this *specific* request still has. Stored on the config
+ * (not on the interceptor instance) so concurrent requests don't
+ * race a single counter — see the PingController case where three
+ * Schwab calls fan out in parallel after a lambda cold start.
+ */
+const AUTH_RETRIES_KEY = '__schwabAuthRetries';
+
 export class AuthorizationTokenInterceptor extends Interceptor {
-  private authTokenRefreshRetries = MAX_RETRIES;
+  /**
+   * In-flight refresh promise. When a 401 races with another 401, the
+   * second caller awaits the same refresh instead of double-refreshing
+   * (and potentially invalidating each other's refresh tokens).
+   */
+  private refreshInFlight: Promise<void> | null = null;
 
   constructor(private readonly credentialProvider: CredentialProvider) {
     super();
@@ -18,28 +32,38 @@ export class AuthorizationTokenInterceptor extends Interceptor {
     if (config.url?.includes(AUTHENTICATION) || config.url?.includes(OAUTH2_TOKEN)) return config;
     const accessToken = await this.getAccessToken();
     config.headers.Authorization = `Bearer ${accessToken}`;
+    if (config[AUTH_RETRIES_KEY] === undefined) {
+      config[AUTH_RETRIES_KEY] = MAX_RETRIES;
+    }
     return config;
   }
 
   async onErrorResponseHandler(error: AxiosError, client: Client): Promise<any> {
-    const { config = {}, response } = error;
+    const { config = {} as any, response } = error;
 
-    if (config.url?.includes(OAUTH2_TOKEN) || config.url?.includes(AUTHENTICATION)) return error;
+    if (config.url?.includes(OAUTH2_TOKEN) || config.url?.includes(AUTHENTICATION)) throw error;
 
-    if (response?.status === 401 && this.authTokenRefreshRetries > 0) {
-      console.info(`Response is 401: ${JSON.stringify(error)}`);
-      this.authTokenRefreshRetries--;
-      await this.refreshAccessToken(client);
-      const secondResponse = await client.connect(config);
-      this.resetAuthTokenRefreshRetries();
-      return secondResponse;
+    const remaining = config[AUTH_RETRIES_KEY] ?? 0;
+    if (response?.status === 401 && remaining > 0) {
+      console.info(`Response is 401; refreshing access token and retrying ${config.method?.toUpperCase()} ${config.url}`);
+      config[AUTH_RETRIES_KEY] = remaining - 1;
+      await this.coalescedRefresh(client);
+      // Drop the stale Authorization header so onSuccessRequestHandler
+      // applies the freshly refreshed token to the retry.
+      if (config.headers) delete config.headers.Authorization;
+      return client.connect(config);
     }
 
     throw error;
   }
 
-  private resetAuthTokenRefreshRetries() {
-    this.authTokenRefreshRetries = MAX_RETRIES;
+  private coalescedRefresh(client: Client): Promise<void> {
+    if (!this.refreshInFlight) {
+      this.refreshInFlight = this.refreshAccessToken(client).finally(() => {
+        this.refreshInFlight = null;
+      });
+    }
+    return this.refreshInFlight;
   }
 
   private async getAccessToken(): Promise<string> {
