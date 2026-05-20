@@ -45,7 +45,9 @@ export class AuthorizationTokenInterceptor extends Interceptor {
 
     const remaining = config[AUTH_RETRIES_KEY] ?? 0;
     if (response?.status === 401 && remaining > 0) {
-      console.info(`Response is 401; refreshing access token and retrying ${config.method?.toUpperCase()} ${config.url}`);
+      console.info(
+        `Response is 401; refreshing access token and retrying ${config.method?.toUpperCase()} ${config.url}`,
+      );
       config[AUTH_RETRIES_KEY] = remaining - 1;
       await this.coalescedRefresh(client);
       // Drop the stale Authorization header so onSuccessRequestHandler

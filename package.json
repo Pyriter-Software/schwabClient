@@ -1,6 +1,6 @@
 {
   "name": "@pyriter/schwab-client",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "Schwab Client",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
