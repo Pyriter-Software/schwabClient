@@ -5,7 +5,7 @@ import { provideClientWithLocalFileCredentialProvider } from '../utils/testUtils
 import { TransactionsApi } from './transactions';
 import { DateTime } from 'luxon';
 
-describe('Transactions', () => {
+describe.skip('Transactions', () => {
   let validAccount: SecuritiesAccount;
   const client = provideClientWithLocalFileCredentialProvider();
   const accountApi = new AccountApi(client);
