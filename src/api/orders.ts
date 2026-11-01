@@ -1,23 +1,25 @@
 import { ArrayFormatType, Request, ResponseType } from '../models/connect';
 import { ACCOUNTS, ORDERS } from '../connection/routes.config';
 import {
+  AccountOrdersConfig,
+  PreviewOrderConfig,
+  PreviewOrder,
   CancelOrderConfig,
   GetOrderConfig,
-  Order,
+  OrderResponse,
   OrdersByQueryConfig,
   OrdersConfig,
   PlaceOrderResponse,
   ReplaceOrdersConfig,
 } from '../models/order';
-import { round } from '../utils/round';
 import { Client } from '../connection/client';
 
 export class OrdersApi {
   constructor(private client: Client) {}
 
-  async getOrder(config: GetOrderConfig): Promise<Order> {
+  async getOrder(config: GetOrderConfig): Promise<OrderResponse> {
     const { accountId, orderId } = config;
-    const url = `${ACCOUNTS}/${accountId}/orders/${orderId}`;
+    const url = this.generateOrderUrl(accountId, orderId);
     const response = await this.client.get({
       url,
       responseType: ResponseType.JSON,
@@ -27,9 +29,9 @@ export class OrdersApi {
   }
 
   /*
-  All orders for a specific account or, if account ID isn't specified, orders will be returned for all linked accounts.
+  Orders for all linked accounts. Both ISO-8601 date bounds are required.
    */
-  async getOrdersByQuery(config?: OrdersByQueryConfig): Promise<Order[]> {
+  async getOrdersByQuery(config: OrdersByQueryConfig): Promise<OrderResponse[]> {
     const url = ORDERS;
     const response = await this.client.get({
       url,
@@ -40,13 +42,26 @@ export class OrdersApi {
     return response.data;
   }
 
-  /*
-  Place an order for a specific account.
-  Order throttle limits may apply.
-  Click here [https://developer.tdameritrade.com/content/place-order-samples]
-  for to see our Place Order Samples Guide for more information around order
-  throttles and examples of orders.
-   */
+  async getOrdersForAccount(config: AccountOrdersConfig): Promise<OrderResponse[]> {
+    const { accountId, ...params } = config;
+    const response = await this.client.get({
+      url: this.generateOrderUrl(accountId),
+      params,
+      responseType: ResponseType.JSON,
+      arrayFormat: ArrayFormatType.COMMA,
+    } as Request);
+    return response.data;
+  }
+
+  async previewOrder(config: PreviewOrderConfig): Promise<PreviewOrder> {
+    const response = await this.client.post({
+      url: `${ACCOUNTS}/${encodeURIComponent(config.accountId)}/previewOrder`,
+      data: config.order,
+      responseType: ResponseType.JSON,
+    } as Request);
+    return response.data;
+  }
+
   async placeOrder(config: OrdersConfig): Promise<PlaceOrderResponse> {
     const url = this.generateOrderUrl(config.accountId);
     const order = this.processOrder(config.order);
@@ -81,11 +96,8 @@ export class OrdersApi {
     };
   }
 
-  processOrder(order: Order): Order {
-    if (!order.price) return order;
-    const price = Number(order.price.toFixed(2)) * 100;
-    order.price = round(price, 5) / 100;
-    return order;
+  processOrder<T extends { price?: number }>(order: T): T {
+    return { ...order };
   }
 
   async cancelOrder(config: CancelOrderConfig): Promise<any> {
@@ -100,11 +112,11 @@ export class OrdersApi {
   }
 
   generateOrderUrl(accountId: string, orderId?: string): string {
-    return `${ACCOUNTS}/${accountId}/orders${this.generateOrderIdUrl(orderId)}`;
+    return `${ACCOUNTS}/${encodeURIComponent(accountId)}/orders${this.generateOrderIdUrl(orderId)}`;
   }
 
   generateOrderIdUrl(orderId?: string) {
-    return orderId ? `/${orderId}` : '';
+    return orderId ? `/${encodeURIComponent(orderId)}` : '';
   }
 
   extractOrderIdFromUrl(url: string): string {

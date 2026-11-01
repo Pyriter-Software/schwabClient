@@ -1,15 +1,16 @@
 import { ArrayFormatType, Request, ResponseType } from '../models/connect';
-import { AccountConfig, AccountNumberMetadata, SecuritiesAccount } from '../models/accounts';
+import { AccountConfig, AccountsConfig, AccountNumberMetadata, SecuritiesAccount } from '../models/accounts';
 import { ACCOUNTS } from '../connection/routes.config';
 import { Client } from '../connection/client';
 
 export class AccountApi {
   constructor(private client: Client) {}
 
-  async getAllAccounts(): Promise<SecuritiesAccount[]> {
+  async getAllAccounts(config: AccountsConfig = {}): Promise<SecuritiesAccount[]> {
     const url = `${ACCOUNTS}`;
     const response = await this.client.get({
       url,
+      params: { fields: config.fields },
       responseType: ResponseType.JSON,
       arrayFormat: ArrayFormatType.COMMA,
     } as Request);
@@ -29,6 +30,7 @@ export class AccountApi {
     const url = this.generateAccountUrl({ accountIdHashValue: config.accountNumberHashValue });
     const response = await this.client.get({
       url,
+      params: { fields: config.fields },
       responseType: ResponseType.JSON,
       arrayFormat: ArrayFormatType.COMMA,
     } as Request);
@@ -54,7 +56,7 @@ export class AccountApi {
 
   generateAccountUrl(config: { accountIdHashValue: string }): string {
     const { accountIdHashValue } = config;
-    const accountUIdUrlString = accountIdHashValue ? '/' + accountIdHashValue : '';
+    const accountUIdUrlString = accountIdHashValue ? '/' + encodeURIComponent(accountIdHashValue) : '';
     return `${ACCOUNTS}${accountUIdUrlString}`;
   }
 }

@@ -5,6 +5,7 @@ const ROUTES = {
     auth: '/auth',
     accounts: '/trader/v1/accounts',
     orders: '/trader/v1/orders',
+    userPreference: '/trader/v1/userPreference',
     optionChain: '/marketdata/v1/chains',
     quotes: '/marketdata/v1/quotes',
     hours: '/marketdata/v1/markets',
@@ -20,3 +21,5 @@ export const OPTION_CHAIN = `${ROUTES.hostname}${ROUTES.endpoints.optionChain}`;
 export const QUOTES = `${ROUTES.hostname}${ROUTES.endpoints.quotes}`;
 export const HOURS = `${ROUTES.hostname}${ROUTES.endpoints.hours}`;
 export const PRICE_HISTORY = `${ROUTES.hostname}${ROUTES.endpoints.priceHistory}`;
+
+export const USER_PREFERENCE = `${ROUTES.hostname}${ROUTES.endpoints.userPreference}`;

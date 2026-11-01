@@ -1,9 +1,15 @@
+import { Position } from './trader';
+
 export type AccountNumberMetadata = {
   accountNumber: string;
   hashValue: string;
 };
 
-export interface AccountConfig {
+export interface AccountsConfig {
+  fields?: 'positions';
+}
+
+export interface AccountConfig extends AccountsConfig {
   accountNumberHashValue: string;
 }
 
@@ -94,6 +100,7 @@ export interface SecuritiesAccount {
   isDayTrader: boolean;
   isClosingOnlyRestricted: boolean;
   pfcbFlag: boolean;
+  positions?: Position[];
   initialBalances: InitialBalances;
   currentBalances: Balances;
   projectedBalances: Balances;

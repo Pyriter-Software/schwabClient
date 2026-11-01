@@ -1,9 +1,12 @@
+import * as Trader from './trader';
+
 export interface GetTransactionsConfig {
   accountId: string;
-  transactionId?: string;
-  startDate: string;
-  endDate: string;
-  types?: QueryTransactionType;
+  transactionId?: string | number;
+  symbol?: string;
+  startDate?: string;
+  endDate?: string;
+  types?: QueryTransactionType | Trader.TransactionType;
 }
 
 export enum QueryTransactionType {
@@ -26,7 +29,7 @@ export enum QueryTransactionType {
 
 export interface GetTransactionsByQueryConfig {
   accountId: string;
-  types: QueryTransactionType;
+  types: QueryTransactionType | Trader.TransactionType;
   symbol?: string;
   startDate: string;
   endDate: string;
@@ -57,38 +60,19 @@ export enum AchStatusType {
   Error = 'Error',
 }
 
-export interface Transaction {
-  type: TransactionType;
-  clearingReferenceNumber: string;
-  subAccount: string;
-  settlementDate: string;
-  orderId: string;
-  sma: number;
-  requirementReallocationAmount: number;
-  dayTradeBuyingPowerEffect: number;
-  netAmount: number;
-  transactionDate: string;
-  orderDate: string;
-  transactionSubType: string;
-  transactionId: string;
-  cashBalanceEffectFlag: boolean;
-  description: string;
-  achStatus: AchStatusType;
-  accruedInterest: number;
-  fees: object;
-  transferItems: TransferItem[];
+/** Current Schwab transaction schema, with optional legacy aliases. */
+export interface Transaction extends Trader.Transaction {
+  /** @deprecated Schwab identifies transactions with activityId. */
+  transactionId?: string;
+  /** @deprecated Use time. */
+  transactionDate?: string;
 }
 
-export interface TransferItem {
-  accountId: number;
-  amount: number;
-  price: number;
-  cost: number;
-  parentOrderKey: number;
-  parentChildIndicator: string;
-  instruction: string;
-  positionEffect: string;
-  instrument: OptionTransactionInstrument;
+export type TransferItem = Trader.TransferItem;
+
+export interface GetTransactionConfig {
+  accountId: string;
+  transactionId: string | number;
 }
 
 export interface OptionTransactionInstrument {

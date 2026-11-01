@@ -1,10 +1,15 @@
+import { UserPreferenceApi } from '../api/userPreference';
+import { UserPreference } from '../models/trader';
 import { Interceptor } from './interceptor';
 import { CredentialProvider } from '../providers/credentialProvider';
 import { SchwabClientBuilder } from './schwabClientBuilder';
 import {
+  AccountOrdersConfig,
+  PreviewOrderConfig,
+  PreviewOrder,
   CancelOrderConfig,
   GetOrderConfig,
-  Order,
+  OrderResponse,
   OrdersByQueryConfig,
   OrdersConfig,
   PlaceOrderResponse,
@@ -13,8 +18,13 @@ import {
 import { AuthorizationTokenInterceptor } from './authorizationTokenInterceptor';
 import { OptionChainConfig, OptionChainResponse } from '../models/optionChain';
 import { QuotesConfig, Quote } from '../models/quotes';
-import { AccountConfig, SecuritiesAccount } from '../models/accounts';
-import { GetTransactionsByQueryConfig, GetTransactionsConfig, Transaction } from '../models/transaction';
+import { AccountsConfig, AccountNumberMetadata, SecuritiesAccount } from '../models/accounts';
+import {
+  GetTransactionConfig,
+  GetTransactionsByQueryConfig,
+  GetTransactionsConfig,
+  Transaction,
+} from '../models/transaction';
 import { Client } from './client';
 import { AccountApi } from '../api/accounts';
 import { OrdersApi } from '../api/orders';
@@ -49,6 +59,7 @@ export class SchwabClient {
   private transactionApi: TransactionsApi;
   private hoursApi: HoursApi;
   private priceHistoryApi: PriceHistoryApi;
+  private userPreferenceApi: UserPreferenceApi;
   private client: Client;
 
   constructor(private config: SchwabClientConfig) {
@@ -62,6 +73,7 @@ export class SchwabClient {
     this.transactionApi = new TransactionsApi(client);
     this.hoursApi = new HoursApi(client);
     this.priceHistoryApi = new PriceHistoryApi(client);
+    this.userPreferenceApi = new UserPreferenceApi(client);
     this.client = client;
   }
 
@@ -69,23 +81,45 @@ export class SchwabClient {
     return new SchwabClientBuilder(config).build();
   }
 
-  async getAllAccounts(): Promise<SecuritiesAccount[]> {
-    return await this.accountApi.getAllAccounts();
+  async getAllAccounts(config?: AccountsConfig): Promise<SecuritiesAccount[]> {
+    return await this.accountApi.getAllAccounts(config);
   }
 
-  async getAccountByNumber(accountNumber: string): Promise<SecuritiesAccount> {
+  async getAccountByNumber(accountNumber: string, config?: AccountsConfig): Promise<SecuritiesAccount> {
     const accountMetadata = await this.accountApi.getAccountNumbers();
     const target = accountMetadata.find((a) => a.accountNumber === accountNumber);
     if (!target) throw new Error(`Account number ${accountNumber} does not exists`);
     return await this.accountApi.getAccount({
+      ...config,
       accountNumberHashValue: target.hashValue,
     });
   }
 
-  async getAccountByHash(accountHashValue: string): Promise<SecuritiesAccount> {
+  async getAccountByHash(accountHashValue: string, config?: AccountsConfig): Promise<SecuritiesAccount> {
     return await this.accountApi.getAccount({
+      ...config,
       accountNumberHashValue: accountHashValue,
     });
+  }
+
+  async getAccountNumbers(): Promise<AccountNumberMetadata[]> {
+    return await this.accountApi.getAccountNumbers();
+  }
+
+  async getOrdersForAccount(config: AccountOrdersConfig): Promise<OrderResponse[]> {
+    return await this.ordersApi.getOrdersForAccount(config);
+  }
+
+  async previewOrder(config: PreviewOrderConfig): Promise<PreviewOrder> {
+    return await this.ordersApi.previewOrder(config);
+  }
+
+  async getUserPreference(): Promise<UserPreference[]> {
+    return await this.userPreferenceApi.getUserPreference();
+  }
+
+  async getTransaction(config: GetTransactionConfig): Promise<Transaction[]> {
+    return await this.transactionApi.getTransaction(config);
   }
 
   async placeOrder(config: OrdersConfig): Promise<PlaceOrderResponse> {
@@ -108,11 +142,11 @@ export class SchwabClient {
     return await this.ordersApi.cancelOrder(config);
   }
 
-  async getOrdersByQuery(config: OrdersByQueryConfig): Promise<Order[]> {
+  async getOrdersByQuery(config: OrdersByQueryConfig): Promise<OrderResponse[]> {
     return await this.ordersApi.getOrdersByQuery(config);
   }
 
-  async getOrder(config: GetOrderConfig): Promise<Order> {
+  async getOrder(config: GetOrderConfig): Promise<OrderResponse> {
     return await this.ordersApi.getOrder(config);
   }
 

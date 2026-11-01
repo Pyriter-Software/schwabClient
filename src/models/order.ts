@@ -1,3 +1,5 @@
+import * as Trader from './trader';
+
 export interface GetOrderConfig {
   accountId: string;
   orderId: string;
@@ -9,7 +11,7 @@ export interface PlaceOrderResponse {
 
 export interface OrdersConfig {
   accountId: string;
-  order: Order;
+  order: Order | Trader.OrderRequest;
 }
 
 export interface CancelOrderConfig {
@@ -20,7 +22,7 @@ export interface CancelOrderConfig {
 export interface ReplaceOrdersConfig {
   accountId: string;
   orderId: string;
-  order: Order;
+  order: Order | Trader.OrderRequest;
 }
 
 export interface CancelTime {
@@ -85,7 +87,7 @@ export interface Order {
   session: SessionType;
   duration: DurationType;
   orderType: OrderType;
-  cancelTime?: CancelTime;
+  cancelTime?: CancelTime | string;
   complexOrderStrategyType: ComplexOrderStrategyType;
   quantity?: number;
   filledQuantity?: number;
@@ -113,6 +115,8 @@ export interface Order {
   enteredTime: string;
   closeTime: string;
   accountId: number;
+  accountNumber?: number;
+  tag?: string;
   orderActivityCollection: Execution[];
   replacingOrderCollection: object[];
   childOrderStrategies: object[];
@@ -122,12 +126,13 @@ export interface Order {
 export declare type SpecialInstruction = 'ALL_OR_NONE' | 'DO_NOT_REDUCE' | 'ALL_OR_NONE_DO_NOT_REDUCE';
 
 export enum TaxLotMethod {
-  FIFO = '',
-  LIFO = '',
-  HIGH_COST = '',
-  LOW_COST = '',
-  AVERAGE_COST = '',
-  SPECIFIC_LOT = '',
+  FIFO = 'FIFO',
+  LIFO = 'LIFO',
+  HIGH_COST = 'HIGH_COST',
+  LOW_COST = 'LOW_COST',
+  AVERAGE_COST = 'AVERAGE_COST',
+  SPECIFIC_LOT = 'SPECIFIC_LOT',
+  LOSS_HARVESTER = 'LOSS_HARVESTER',
 }
 
 export enum PriceLinkType {
@@ -148,6 +153,10 @@ export enum OrderType {
   NET_DEBIT = 'NET_DEBIT',
   NET_CREDIT = 'NET_CREDIT',
   NET_ZERO = 'NET_ZERO',
+  CABINET = 'CABINET',
+  NON_MARKETABLE = 'NON_MARKETABLE',
+  LIMIT_ON_CLOSE = 'LIMIT_ON_CLOSE',
+  UNKNOWN = 'UNKNOWN',
 }
 
 export enum SessionType {
@@ -161,12 +170,23 @@ export enum DurationType {
   DAY = 'DAY',
   GOOD_TILL_CANCEL = 'GOOD_TILL_CANCEL',
   FILL_OR_KILL = 'FILL_OR_KILL',
+  IMMEDIATE_OR_CANCEL = 'IMMEDIATE_OR_CANCEL',
+  END_OF_WEEK = 'END_OF_WEEK',
+  END_OF_MONTH = 'END_OF_MONTH',
+  NEXT_END_OF_MONTH = 'NEXT_END_OF_MONTH',
+  UNKNOWN = 'UNKNOWN',
 }
 
 export enum OrderStrategyType {
   SINGLE = 'SINGLE',
   OCO = 'OCO',
   TRIGGER = 'TRIGGER',
+  CANCEL = 'CANCEL',
+  RECALL = 'RECALL',
+  PAIR = 'PAIR',
+  FLATTEN = 'FLATTEN',
+  TWO_DAY_SWAP = 'TWO_DAY_SWAP',
+  BLAST_ALL = 'BLAST_ALL',
 }
 
 export enum OrderLegType {
@@ -197,6 +217,10 @@ export enum AssetType {
   CASH_EQUIVALENT = 'CASH_EQUIVALENT',
   FIXED_INCOME = 'FIXED_INCOME',
   CURRENCY = 'CURRENCY',
+  FUTURE = 'FUTURE',
+  FOREX = 'FOREX',
+  PRODUCT = 'PRODUCT',
+  COLLECTIVE_INVESTMENT = 'COLLECTIVE_INVESTMENT',
 }
 
 export enum OptionInstrumentType {
@@ -258,6 +282,7 @@ export enum InstructionType {
   SELL_TO_OPEN = 'SELL_TO_OPEN',
   SELL_TO_CLOSE = 'SELL_TO_CLOSE',
   EXCHANGE = 'EXCHANGE',
+  SELL_SHORT_EXEMPT = 'SELL_SHORT_EXEMPT',
 }
 
 export interface Instrument {
@@ -267,9 +292,9 @@ export interface Instrument {
 
 export interface OrdersByQueryConfig {
   maxResults?: number;
-  fromEnteredTime: string; // yyyy-MM-dd,
-  toEnteredTime: string; // yyyy-MM-dd
-  status?: StatusType;
+  fromEnteredTime: string; // ISO-8601 timestamp
+  toEnteredTime: string; // ISO-8601 timestamp
+  status?: StatusType | Trader.status;
 }
 
 export enum ComplexOrderStrategyType {
@@ -293,6 +318,7 @@ export enum ComplexOrderStrategyType {
   UNBALANCED_IRON_CONDOR = 'UNBALANCED_IRON_CONDOR',
   UNBALANCED_VERTICAL_ROLL = 'UNBALANCED_VERTICAL_ROLL',
   CUSTOM = 'CUSTOM',
+  MUTUAL_FUND_SWAP = 'MUTUAL_FUND_SWAP',
 }
 
 export enum StatusType {
@@ -311,6 +337,12 @@ export enum StatusType {
   REPLACED = 'REPLACED',
   FILLED = 'FILLED',
   EXPIRED = 'EXPIRED',
+  AWAITING_STOP_CONDITION = 'AWAITING_STOP_CONDITION',
+  NEW = 'NEW',
+  AWAITING_RELEASE_TIME = 'AWAITING_RELEASE_TIME',
+  PENDING_ACKNOWLEDGEMENT = 'PENDING_ACKNOWLEDGEMENT',
+  PENDING_RECALL = 'PENDING_RECALL',
+  UNKNOWN = 'UNKNOWN',
 }
 
 export interface Execution {
@@ -328,3 +360,18 @@ export interface ExecutionLeg {
   price: number;
   time: string;
 }
+
+/** accountId must be the encrypted hash returned by getAccountNumbers(). */
+export interface AccountOrdersConfig extends OrdersByQueryConfig {
+  accountId: string;
+}
+
+export interface PreviewOrderConfig {
+  accountId: string;
+  order: Trader.PreviewOrder;
+}
+
+export type OrderRequest = Trader.OrderRequest;
+export type PreviewOrder = Trader.PreviewOrder;
+
+export type OrderResponse = Trader.Order;
